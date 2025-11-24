@@ -63,12 +63,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }, 2000);
 
     this.lastUpdate.set(this.mqttService.lastMessageTime());
-    
-    // Observar cambios en lastMessageTime y lastJsonMessage
-    setInterval(() => {
-      this.lastUpdate.set(this.mqttService.lastMessageTime());
-      this.lastJsonMessage.set(this.mqttService.getLastJsonMessage());
-    }, 1000);
 
     this.mqttService.connect();
   }
@@ -107,7 +101,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.esp32WifiRssi.set(data.wifi_rssi);
     }
 
-    // Guardar el último mensaje JSON
+    // Actualizar timestamp del último mensaje
+    this.lastUpdate.set(this.mqttService.lastMessageTime());
+
+    // Guardar el último mensaje JSON (solo cuando llega un nuevo mensaje)
     this.lastJsonMessage.set(JSON.stringify(data, null, 2));
   }
 
