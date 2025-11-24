@@ -1,0 +1,93 @@
+<div class="container">
+  <h1>Dashboard Carro ESP32</h1>
+  <p class="subtitle">Lectura en tiempo real desde MQTT (topic: <code>carro/datos</code>)</p>
+
+  <div class="status-bar">
+    <div class="badge">
+      <div [class]="'dot' + (isWifiConnected() ? ' ok' : '')"></div>
+      WiFi / Navegador
+    </div>
+    <div class="badge">
+      <div [class]="'dot' + (isMqttConnected() ? ' ok' : '')"></div>
+      MQTT
+    </div>
+    <div class="badge">
+      Último mensaje: <span>{{ lastUpdate() }}</span>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Distancia</h2>
+      <div class="value">
+        <span>{{ formatValue(distancia()) }}</span><span class="unit">cm</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Objetos detectados</h2>
+      <div class="value">
+        <span>{{ formatInteger(objetos()) }}</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Velocidad actual</h2>
+      <div class="value">
+        <span>{{ formatInteger(velocidad()) }}</span><span class="unit">%</span>
+      </div>
+      <div class="row">
+        <span>{{ velocidadLabel() }}</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Temperatura MPU6050</h2>
+      <div class="value">
+        <span>{{ formatValue(temperatura()) }}</span><span class="unit">°C</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Aceleración (m/s²)</h2>
+      <div class="row"><span>X:</span><span>{{ formatValue(accelX()) }}</span></div>
+      <div class="row"><span>Y:</span><span>{{ formatValue(accelY()) }}</span></div>
+      <div class="row"><span>Z:</span><span>{{ formatValue(accelZ()) }}</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Giro (rad/s)</h2>
+      <div class="row"><span>X:</span><span>{{ formatValue(gyroX()) }}</span></div>
+      <div class="row"><span>Y:</span><span>{{ formatValue(gyroY()) }}</span></div>
+      <div class="row"><span>Z:</span><span>{{ formatValue(gyroZ()) }}</span></div>
+    </div>
+  </div>
+
+  <h2 style="font-size:0.9rem; color:#9ca3af;">Último JSON recibido</h2>
+  <div class="json-view">{{ lastJsonMessage() }}</div>
+
+  <div class="config">
+    <div class="config-item">
+      <span>Broker</span>
+      <code>{{ config().host }}</code>
+    </div>
+    <div class="config-item">
+      <span>Puerto WebSocket</span>
+      <code>{{ config().port }}</code>
+    </div>
+    <div class="config-item">
+      <span>Topic</span>
+      <code>{{ config().topic }}</code>
+    </div>
+    <div class="config-item">
+      <span>Client ID</span>
+      <code>{{ config().clientId }}</code>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Estado MQTT: <span>{{ mqttStatusText() }}</span></span>
+    <span>Recarga la página si se pierde la conexión.</span>
+  </div>
+</div>
+

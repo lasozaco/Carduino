@@ -1,0 +1,147 @@
+:host {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: #0f172a;
+  color: #e5e7eb;
+  padding: 20px;
+}
+
+.container {
+  background: #020617;
+  border-radius: 16px;
+  padding: 20px 24px;
+  max-width: 900px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  border: 1px solid #1f2937;
+}
+
+h1 {
+  margin-top: 0;
+  margin-bottom: 4px;
+  font-size: 1.6rem;
+  color: #f9fafb;
+}
+
+.subtitle {
+  margin: 0 0 16px 0;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+
+.status-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: #111827;
+  border: 1px solid #374151;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #ef4444;
+}
+
+.dot.ok {
+  background: #22c55e;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.card {
+  background: #020617;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid #1f2937;
+}
+
+.card h2 {
+  margin: 0 0 6px 0;
+  font-size: 0.9rem;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.card .value {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.card .unit {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  margin-left: 4px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.json-view {
+  background: #020617;
+  border-radius: 8px;
+  border: 1px solid #1f2937;
+  padding: 8px;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.78rem;
+  color: #9ca3af;
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.footer {
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: #6b7280;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.config {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  font-size: 0.8rem;
+  color: #9ca3af;
+}
+
+.config-item span {
+  display: block;
+  color: #6b7280;
+  font-size: 0.75rem;
+}
+
+.config-item code {
+  color: #9ca3af;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+}
+
