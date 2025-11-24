@@ -61,6 +61,12 @@ PubSubClient mqttClient(secureClient);
 bool mqttConnected = false;
 unsigned long lastMqttPublish = 0;
 const unsigned long MQTT_PUBLISH_INTERVAL = 1000; // Publicar cada 1 segundo
+unsigned long lastMqttCheck = 0;
+const unsigned long MQTT_CHECK_INTERVAL = 5000; // Verificar conexión cada 5 segundos
+unsigned long lastMqttReconnectAttempt = 0;
+const unsigned long MQTT_RECONNECT_INTERVAL = 10000; // Intentar reconectar cada 10 segundos
+int mqttReconnectAttempts = 0;
+const int MAX_RECONNECT_ATTEMPTS = 3;
 
 /* ===== Utilidades ===== */
 int pctToPWM(int p){
@@ -146,10 +152,13 @@ void conectarWiFi(){
   Serial.println(WIFI_SSID);
   
   WiFi.mode(WIFI_STA);
+  WiFi.disconnect(); // Desconectar cualquier conexión previa
+  delay(100);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   
   int intentos = 0;
-  while (WiFi.status() != WL_CONNECTED && intentos < 20) {
+  const int MAX_INTENTOS = 40; // Aumentado a 20 segundos (40 * 500ms)
+  while (WiFi.status() != WL_CONNECTED && intentos < MAX_INTENTOS) {
     delay(500);
     Serial.print(".");
     intentos++;
@@ -159,48 +168,115 @@ void conectarWiFi(){
     Serial.println("\n✅ WiFi conectado!");
     Serial.print("IP: ");
     Serial.println(WiFi.localIP());
+    Serial.print("RSSI: ");
+    Serial.print(WiFi.RSSI());
+    Serial.println(" dBm");
   } else {
     Serial.println("\n❌ Error al conectar WiFi");
+    Serial.print("Estado WiFi: ");
+    Serial.println(WiFi.status());
   }
 }
 
 /* ===== MQTT ===== */
+bool verificarConexionMQTT(){
+  if (mqttClient.connected()) {
+    mqttClient.loop(); // Mantener conexión viva
+    return true;
+  }
+  return false;
+}
+
 void conectarMQTT(){
   if (mqttClient.connected()) {
     mqttConnected = true;
+    mqttReconnectAttempts = 0; // Resetear contador si está conectado
     return;
   }
   
+  // Verificar WiFi primero
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("⚠️ WiFi no conectado, reconectando...");
+    conectarWiFi();
+    if (WiFi.status() != WL_CONNECTED) {
+      mqttConnected = false;
+      return;
+    }
+  }
+  
   Serial.print("Conectando a MQTT broker: ");
-  Serial.println(MQTT_BROKER);
+  Serial.print(MQTT_BROKER);
+  Serial.print(":");
+  Serial.print(MQTT_PORT);
+  Serial.print(" (Intento ");
+  Serial.print(mqttReconnectAttempts + 1);
+  Serial.print("/");
+  Serial.print(MAX_RECONNECT_ATTEMPTS);
+  Serial.println(")");
   
   // Configurar certificado SSL (HiveMQ Cloud usa certificados válidos)
   secureClient.setInsecure(); // Para desarrollo - en producción usar certificado específico
   
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+  mqttClient.setKeepAlive(60); // Mantener conexión viva
   
   // Intentar conexión
   if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD)) {
-    Serial.println("✅ MQTT conectado!");
+    Serial.println("✅ MQTT conectado exitosamente!");
     mqttConnected = true;
+    mqttReconnectAttempts = 0; // Resetear contador en éxito
   } else {
-    Serial.print("❌ Error MQTT, código: ");
-    Serial.println(mqttClient.state());
+    int estado = mqttClient.state();
     mqttConnected = false;
+    mqttReconnectAttempts++;
+    
+    Serial.print("❌ Error MQTT, código: ");
+    Serial.print(estado);
+    Serial.print(" - ");
+    
+    // Mensajes descriptivos según el código de error
+    switch(estado) {
+      case -4: Serial.println("Timeout de conexión"); break;
+      case -3: Serial.println("Conexión perdida"); break;
+      case -2: Serial.println("Conexión fallida"); break;
+      case -1: Serial.println("Desconectado"); break;
+      case 1: Serial.println("Protocolo incorrecto"); break;
+      case 2: Serial.println("Client ID rechazado"); break;
+      case 3: Serial.println("Servidor no disponible"); break;
+      case 4: Serial.println("Usuario/contraseña incorrectos"); break;
+      case 5: Serial.println("No autorizado"); break;
+      default: Serial.println("Error desconocido"); break;
+    }
+    
+    if (mqttReconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      Serial.println("⚠️ Máximo de intentos alcanzado. Esperando antes de reintentar...");
+      mqttReconnectAttempts = 0; // Resetear para permitir nuevos intentos después del intervalo
+    }
   }
 }
 
 void enviarDatosMQTT(float distanciaCm, int objetosDetectados, int velocidadPct){
-  if (!mqttConnected || !mqttClient.connected()) {
-    conectarMQTT();
+  // Verificar conexión antes de enviar
+  if (!verificarConexionMQTT()) {
+    mqttConnected = false;
+    // Intentar reconectar solo si ha pasado el intervalo de tiempo
+    unsigned long now = millis();
+    if (now - lastMqttReconnectAttempt >= MQTT_RECONNECT_INTERVAL) {
+      lastMqttReconnectAttempt = now;
+      conectarMQTT();
+    }
     return;
   }
+  
+  mqttConnected = true; // Actualizar estado si está conectado
   
   // Crear JSON con los datos
   StaticJsonDocument<200> doc;
   doc["dist_cm"] = distanciaCm;
   doc["objetos"] = objetosDetectados;
   doc["vel_pct"] = velocidadPct;
+  doc["mqtt_connected"] = true; // Agregar estado de conexión al JSON
+  doc["wifi_rssi"] = WiFi.RSSI(); // Agregar señal WiFi
   
   char buffer[200];
   serializeJson(doc, buffer);
@@ -212,15 +288,13 @@ void enviarDatosMQTT(float distanciaCm, int objetosDetectados, int velocidadPct)
     Serial.println("❌ Error al publicar MQTT");
     mqttConnected = false;
   }
-  
-  // Mantener conexión viva
-  mqttClient.loop();
 }
 
 /* ===== Setup ===== */
 void setup(){
   Serial.begin(115200);
-  delay(500);
+  delay(2000); // Esperar más tiempo para que el monitor serial esté listo
+  Serial.println("\n\n=== Carduino Iniciando ===\n");
 
   /* --- Motor / L298N --- */
   pinMode(IN1, OUTPUT);
@@ -277,6 +351,25 @@ void loop(){
   Serial.printf("Distancia: %.1f cm | Objetos: %d | Velocidad: %s (%d%%)\n",
     d, objetos, (currentSpeedPct == SPEED_FAST ? "Rápida" : "Lenta"), currentSpeedPct);
 
+  // Verificar conexión MQTT periódicamente
+  if (now - lastMqttCheck >= MQTT_CHECK_INTERVAL) {
+    lastMqttCheck = now;
+    bool estabaConectado = mqttConnected;
+    mqttConnected = verificarConexionMQTT();
+    
+    if (!mqttConnected && estabaConectado) {
+      Serial.println("⚠️ Conexión MQTT perdida");
+    } else if (mqttConnected && !estabaConectado) {
+      Serial.println("✅ Conexión MQTT restaurada");
+    }
+    
+    // Si no está conectado, intentar reconectar
+    if (!mqttConnected && (now - lastMqttReconnectAttempt >= MQTT_RECONNECT_INTERVAL)) {
+      lastMqttReconnectAttempt = now;
+      conectarMQTT();
+    }
+  }
+  
   // Enviar datos a MQTT periódicamente
   if (now - lastMqttPublish >= MQTT_PUBLISH_INTERVAL) {
     lastMqttPublish = now;

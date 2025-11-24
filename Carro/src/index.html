@@ -6,7 +6,29 @@
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/x-icon" href="favicon.ico">
-  <script src="https://unpkg.com/paho-mqtt/mqttws31.min.js" defer></script>
+  <!-- Cargar Paho MQTT de forma síncrona antes de Angular -->
+  <script src="https://cdn.jsdelivr.net/npm/paho-mqtt@1.1.0/paho-mqtt.min.js"></script>
+  <script>
+    // Verificar que Paho se cargó correctamente
+    (function() {
+      if (typeof window.Paho !== 'undefined') {
+        console.log('✅ Paho MQTT cargado correctamente desde CDN');
+        console.log('Paho.MQTT disponible:', typeof window.Paho.MQTT !== 'undefined');
+      } else {
+        console.error('❌ Paho MQTT no se cargó correctamente');
+        // Intentar cargar desde otro CDN como respaldo
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/paho-mqtt@1.1.0/mqttws31.min.js';
+        script.onload = function() {
+          console.log('✅ Paho MQTT cargado desde CDN alternativo (unpkg)');
+        };
+        script.onerror = function() {
+          console.error('❌ Error al cargar Paho MQTT desde ambos CDNs');
+        };
+        document.head.appendChild(script);
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

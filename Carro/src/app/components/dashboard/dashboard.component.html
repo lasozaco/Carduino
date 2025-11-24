@@ -7,12 +7,33 @@
       <div [class]="'dot' + (isWifiConnected() ? ' ok' : '')"></div>
       WiFi / Navegador
     </div>
-    <div class="badge">
-      <div [class]="'dot' + (isMqttConnected() ? ' ok' : '')"></div>
-      MQTT
+    <div class="badge" [class]="mqttStatusClass()">
+      <div [class]="'dot ' + (isMqttConnected() ? 'ok' : (mqttStatusClass() === 'reconnecting' ? 'reconnecting' : ''))"></div>
+      MQTT Dashboard: {{ mqttStatusText() }}
+    </div>
+    <div class="badge" *ngIf="esp32WifiStatus() !== null">
+      <div [class]="'dot ' + (esp32WifiStatus() ? 'ok' : '')"></div>
+      ESP32 WiFi: {{ esp32WifiStatus() ? 'Conectado' : 'Desconectado' }}
+      <span *ngIf="esp32WifiRssi() !== null" style="font-size: 0.85em; margin-left: 4px;">
+        ({{ esp32WifiRssi() }} dBm)
+      </span>
+    </div>
+    <div class="badge" *ngIf="esp32MqttStatus() !== null">
+      <div [class]="'dot ' + (esp32MqttStatus() ? 'ok' : '')"></div>
+      ESP32 MQTT: {{ esp32MqttStatus() ? 'Conectado' : 'Desconectado' }}
     </div>
     <div class="badge">
       Último mensaje: <span>{{ lastUpdate() }}</span>
+    </div>
+    <div class="badge" *ngIf="!isMqttConnected()">
+      <button class="reconnect-btn" (click)="reconnectMqtt()" title="Reconectar manualmente">
+        🔄 Reconectar
+      </button>
+    </div>
+    <div class="badge">
+      <button class="reconnect-btn" (click)="showDiagnostics()" title="Mostrar información de diagnóstico">
+        🔍 Diagnóstico
+      </button>
     </div>
   </div>
 
@@ -65,8 +86,16 @@
   </div>
 
   <div class="footer">
-    <span>Estado MQTT: <span>{{ mqttStatusText() }}</span></span>
-    <span>Recarga la página si se pierde la conexión.</span>
+    <span>Estado MQTT Dashboard: <span [class]="mqttStatusClass()">{{ mqttStatusText() }}</span></span>
+    <span *ngIf="esp32MqttStatus() !== null">
+      | ESP32 MQTT: <span [class]="esp32MqttStatus() ? 'connected' : 'disconnected'">
+        {{ esp32MqttStatus() ? '✅ Conectado' : '❌ Desconectado' }}
+      </span>
+    </span>
+    <span *ngIf="connectionStatus().attempts > 0 && !isMqttConnected()">
+      | Intentos: {{ connectionStatus().attempts }}/{{ connectionStatus().maxAttempts }}
+    </span>
+    <span *ngIf="isMqttConnected() && esp32MqttStatus()"> | ✅ Conexión completa estable</span>
   </div>
 </div>
 

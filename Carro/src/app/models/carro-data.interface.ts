@@ -17,6 +17,9 @@ export interface CarroData {
   temp_c?: number;
   accel?: AccelData;
   gyro?: GyroData;
+  mqtt_connected?: boolean;
+  wifi_rssi?: number;
+  wifi_connected?: boolean;
 }
 
 export interface MqttConfig {
