@@ -40,27 +40,6 @@
         <span>{{ velocidadLabel() }}</span>
       </div>
     </div>
-
-    <div class="card">
-      <h2>Temperatura MPU6050</h2>
-      <div class="value">
-        <span>{{ formatValue(temperatura()) }}</span><span class="unit">°C</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Aceleración (m/s²)</h2>
-      <div class="row"><span>X:</span><span>{{ formatValue(accelX()) }}</span></div>
-      <div class="row"><span>Y:</span><span>{{ formatValue(accelY()) }}</span></div>
-      <div class="row"><span>Z:</span><span>{{ formatValue(accelZ()) }}</span></div>
-    </div>
-
-    <div class="card">
-      <h2>Giro (rad/s)</h2>
-      <div class="row"><span>X:</span><span>{{ formatValue(gyroX()) }}</span></div>
-      <div class="row"><span>Y:</span><span>{{ formatValue(gyroY()) }}</span></div>
-      <div class="row"><span>Z:</span><span>{{ formatValue(gyroZ()) }}</span></div>
-    </div>
   </div>
 
   <h2 style="font-size:0.9rem; color:#9ca3af;">Último JSON recibido</h2>

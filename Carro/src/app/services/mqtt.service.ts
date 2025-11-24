@@ -21,12 +21,12 @@ export class MqttService {
 
   private config: MqttConfig = {
     host: 'adca0ce03c0645f1861420dc3732838e.s1.eu.hivemq.cloud',
-    port: 8884,
+    port: 8883,
     topic: 'carro/datos',
     clientId: `DashboardCarro_${Math.floor(Math.random() * 10000)}`,
     useSSL: true,
-    userName: '', // Configura tu usuario aquí
-    password: '' // Configura tu contraseña aquí
+    userName: 'hivemq.webclient.1763947373881', // Configura tu usuario aquí
+    password: 'RFsB<l>yO29c#gP1J0@r' // Configura tu contraseña aquí
   };
 
   private isInitialized = false;

@@ -3,6 +3,10 @@
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <PubSubClient.h>
+#include <ArduinoJson.h>
 
 /* ===== Pines según tu conexión ===== */
 #define IN1       25      // L298N IN1
@@ -40,6 +44,23 @@ Adafruit_MPU6050 mpu;
 bool mpuOk = false;
 unsigned long lastMPUPrint = 0;
 const unsigned long MPU_PRINT_INTERVAL = 200; // ms
+
+/* ===== WiFi y MQTT ===== */
+const char* WIFI_SSID = "ORTEGA_ZATAPA";           // ⚠️ CONFIGURA TU SSID
+const char* WIFI_PASSWORD = "@NalaSeisMax.";    // ⚠️ CONFIGURA TU PASSWORD
+
+const char* MQTT_BROKER = "adca0ce03c0645f1861420dc3732838e.s1.eu.hivemq.cloud";
+const int MQTT_PORT = 8883;
+const char* MQTT_TOPIC = "carro/datos";
+const char* MQTT_USER = "hivemq.webclient.1763947373881";                   // ⚠️ CONFIGURA TU USUARIO MQTT (si es necesario)
+const char* MQTT_PASSWORD = "RFsB<l>yO29c#gP1J0@r";               // ⚠️ CONFIGURA TU PASSWORD MQTT (si es necesario)
+const char* MQTT_CLIENT_ID = "Carduino_ESP32";
+
+WiFiClientSecure secureClient;
+PubSubClient mqttClient(secureClient);
+bool mqttConnected = false;
+unsigned long lastMqttPublish = 0;
+const unsigned long MQTT_PUBLISH_INTERVAL = 1000; // Publicar cada 1 segundo
 
 /* ===== Utilidades ===== */
 int pctToPWM(int p){
@@ -119,6 +140,83 @@ void leerMPU(){
   }
 }
 
+/* ===== WiFi ===== */
+void conectarWiFi(){
+  Serial.print("Conectando a WiFi: ");
+  Serial.println(WIFI_SSID);
+  
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  
+  int intentos = 0;
+  while (WiFi.status() != WL_CONNECTED && intentos < 20) {
+    delay(500);
+    Serial.print(".");
+    intentos++;
+  }
+  
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n✅ WiFi conectado!");
+    Serial.print("IP: ");
+    Serial.println(WiFi.localIP());
+  } else {
+    Serial.println("\n❌ Error al conectar WiFi");
+  }
+}
+
+/* ===== MQTT ===== */
+void conectarMQTT(){
+  if (mqttClient.connected()) {
+    mqttConnected = true;
+    return;
+  }
+  
+  Serial.print("Conectando a MQTT broker: ");
+  Serial.println(MQTT_BROKER);
+  
+  // Configurar certificado SSL (HiveMQ Cloud usa certificados válidos)
+  secureClient.setInsecure(); // Para desarrollo - en producción usar certificado específico
+  
+  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+  
+  // Intentar conexión
+  if (mqttClient.connect(MQTT_CLIENT_ID, MQTT_USER, MQTT_PASSWORD)) {
+    Serial.println("✅ MQTT conectado!");
+    mqttConnected = true;
+  } else {
+    Serial.print("❌ Error MQTT, código: ");
+    Serial.println(mqttClient.state());
+    mqttConnected = false;
+  }
+}
+
+void enviarDatosMQTT(float distanciaCm, int objetosDetectados, int velocidadPct){
+  if (!mqttConnected || !mqttClient.connected()) {
+    conectarMQTT();
+    return;
+  }
+  
+  // Crear JSON con los datos
+  StaticJsonDocument<200> doc;
+  doc["dist_cm"] = distanciaCm;
+  doc["objetos"] = objetosDetectados;
+  doc["vel_pct"] = velocidadPct;
+  
+  char buffer[200];
+  serializeJson(doc, buffer);
+  
+  // Publicar en el topic
+  if (mqttClient.publish(MQTT_TOPIC, buffer)) {
+    Serial.printf("📤 MQTT enviado: %s\n", buffer);
+  } else {
+    Serial.println("❌ Error al publicar MQTT");
+    mqttConnected = false;
+  }
+  
+  // Mantener conexión viva
+  mqttClient.loop();
+}
+
 /* ===== Setup ===== */
 void setup(){
   Serial.begin(115200);
@@ -154,6 +252,12 @@ void setup(){
     mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
   }
 
+  /* --- WiFi y MQTT --- */
+  conectarWiFi();
+  if (WiFi.status() == WL_CONNECTED) {
+    conectarMQTT();
+  }
+
   Serial.println("Inicio: velocidad=Rápida, conteo=0");
 }
 
@@ -172,6 +276,12 @@ void loop(){
   // Info al Serial del ultrasonico + estado
   Serial.printf("Distancia: %.1f cm | Objetos: %d | Velocidad: %s (%d%%)\n",
     d, objetos, (currentSpeedPct == SPEED_FAST ? "Rápida" : "Lenta"), currentSpeedPct);
+
+  // Enviar datos a MQTT periódicamente
+  if (now - lastMqttPublish >= MQTT_PUBLISH_INTERVAL) {
+    lastMqttPublish = now;
+    enviarDatosMQTT(d, objetos, currentSpeedPct);
+  }
 
   // Flanco de subida + cooldown => nueva detección
   if (obstAhora && !obstPrev && (now - lastHit > COOLDOWN_MS)) {

@@ -22,13 +22,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   public readonly objetos = signal<number | null>(null);
   public readonly velocidad = signal<number | null>(null);
   public readonly velocidadLabel = signal<string>('–');
-  public readonly temperatura = signal<number | null>(null);
-  public readonly accelX = signal<number | null>(null);
-  public readonly accelY = signal<number | null>(null);
-  public readonly accelZ = signal<number | null>(null);
-  public readonly gyroX = signal<number | null>(null);
-  public readonly gyroY = signal<number | null>(null);
-  public readonly gyroZ = signal<number | null>(null);
   public readonly lastJsonMessage = signal<string>('{}');
 
   // Estado de conexión
@@ -82,22 +75,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.velocidad.set(data.vel_pct);
       const label = data.vel_pct >= 80 ? 'Rápida' : 'Lenta/Media';
       this.velocidadLabel.set(label);
-    }
-
-    if (data.accel) {
-      if (data.accel.x !== undefined) this.accelX.set(data.accel.x);
-      if (data.accel.y !== undefined) this.accelY.set(data.accel.y);
-      if (data.accel.z !== undefined) this.accelZ.set(data.accel.z);
-    }
-
-    if (data.gyro) {
-      if (data.gyro.x !== undefined) this.gyroX.set(data.gyro.x);
-      if (data.gyro.y !== undefined) this.gyroY.set(data.gyro.y);
-      if (data.gyro.z !== undefined) this.gyroZ.set(data.gyro.z);
-    }
-
-    if (data.temp_c !== undefined) {
-      this.temperatura.set(data.temp_c);
     }
 
     // Guardar el último mensaje JSON
