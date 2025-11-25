@@ -41,6 +41,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   // Configuración
   public readonly config = signal(this.mqttService.getConfig());
+  
+  // UI State
+  public activeTab: 'config' | 'json' = 'config';
 
   ngOnInit(): void {
     this.isWifiConnected.set(true);
@@ -116,6 +119,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return value !== null ? value.toString() : '–';
   }
 
+  public getDistanciaPercent(): number {
+    const dist = this.distancia();
+    if (dist === null) return 0;
+    return Math.min((dist / 200) * 100, 100);
+  }
+
+  public getVelocidadPercent(): number {
+    return this.velocidad() || 0;
+  }
+
   private updateMqttStatus(connected: boolean): void {
     if (connected) {
       this.mqttStatusText.set('Conectado');
@@ -158,6 +171,52 @@ export class DashboardComponent implements OnInit, OnDestroy {
           `Último mensaje: ${diag.lastMessageReceived}\n` +
           `Tiempo desde último: ${diag.timeSinceLastMessage}\n\n` +
           `Revisa la consola del navegador (F12) para más detalles.`);
+  }
+
+  public copyJson(): void {
+    const jsonText = this.lastJsonMessage();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(jsonText).then(() => {
+        // Feedback visual opcional
+        const btn = document.querySelector('.copy-btn');
+        if (btn) {
+          const originalText = btn.textContent;
+          btn.textContent = '✅ Copiado!';
+          setTimeout(() => {
+            btn.textContent = originalText;
+          }, 2000);
+        }
+      }).catch(err => {
+        console.error('Error al copiar:', err);
+        this.fallbackCopyText(jsonText);
+      });
+    } else {
+      this.fallbackCopyText(jsonText);
+    }
+  }
+
+  private fallbackCopyText(text: string): void {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand('copy');
+      const btn = document.querySelector('.copy-btn');
+      if (btn) {
+        const originalText = btn.textContent;
+        btn.textContent = '✅ Copiado!';
+        setTimeout(() => {
+          btn.textContent = originalText;
+        }, 2000);
+      }
+    } catch (err) {
+      console.error('Error al copiar (fallback):', err);
+    }
+    document.body.removeChild(textArea);
   }
 }
 

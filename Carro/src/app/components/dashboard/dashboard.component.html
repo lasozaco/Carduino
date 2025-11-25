@@ -1,101 +1,194 @@
-<div class="container">
-  <h1>Dashboard Carro ESP32</h1>
-  <p class="subtitle">Lectura en tiempo real desde MQTT (topic: <code>carro/datos</code>)</p>
-
-  <div class="status-bar">
-    <div class="badge">
-      <div [class]="'dot' + (isWifiConnected() ? ' ok' : '')"></div>
-      WiFi / Navegador
-    </div>
-    <div class="badge" [class]="mqttStatusClass()">
-      <div [class]="'dot ' + (isMqttConnected() ? 'ok' : (mqttStatusClass() === 'reconnecting' ? 'reconnecting' : ''))"></div>
-      MQTT Dashboard: {{ mqttStatusText() }}
-    </div>
-    <div class="badge" *ngIf="esp32WifiStatus() !== null">
-      <div [class]="'dot ' + (esp32WifiStatus() ? 'ok' : '')"></div>
-      ESP32 WiFi: {{ esp32WifiStatus() ? 'Conectado' : 'Desconectado' }}
-      <span *ngIf="esp32WifiRssi() !== null" style="font-size: 0.85em; margin-left: 4px;">
-        ({{ esp32WifiRssi() }} dBm)
-      </span>
-    </div>
-    <div class="badge" *ngIf="esp32MqttStatus() !== null">
-      <div [class]="'dot ' + (esp32MqttStatus() ? 'ok' : '')"></div>
-      ESP32 MQTT: {{ esp32MqttStatus() ? 'Conectado' : 'Desconectado' }}
-    </div>
-    <div class="badge">
-      Último mensaje: <span>{{ lastUpdate() }}</span>
-    </div>
-    <div class="badge" *ngIf="!isMqttConnected()">
-      <button class="reconnect-btn" (click)="reconnectMqtt()" title="Reconectar manualmente">
-        🔄 Reconectar
-      </button>
-    </div>
-    <div class="badge">
-      <button class="reconnect-btn" (click)="showDiagnostics()" title="Mostrar información de diagnóstico">
-        🔍 Diagnóstico
-      </button>
-    </div>
-  </div>
-
-  <div class="grid">
-    <div class="card">
-      <h2>Distancia</h2>
-      <div class="value">
-        <span>{{ formatValue(distancia()) }}</span><span class="unit">cm</span>
+<div class="dashboard-container">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h1>CARDUINO</h1>
+          <span class="logo-subtitle">ESP32 Control</span>
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Objetos detectados</h2>
-      <div class="value">
-        <span>{{ formatInteger(objetos()) }}</span>
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <h3 class="nav-title">Estado del Sistema</h3>
+        <div class="nav-status">
+          <div class="status-item-nav" [class.active]="isMqttConnected()">
+            <span class="status-dot-nav" [class.online]="isMqttConnected()"></span>
+            <span>Dashboard MQTT</span>
+            <span class="status-badge-nav" [class]="mqttStatusClass()">{{ mqttStatusText() }}</span>
+          </div>
+          <div class="status-item-nav" *ngIf="esp32WifiStatus() !== null" [class.active]="esp32WifiStatus()">
+            <span class="status-dot-nav" [class.online]="esp32WifiStatus()"></span>
+            <span>ESP32 WiFi</span>
+            <span class="status-badge-nav" *ngIf="esp32WifiRssi() !== null">{{ esp32WifiRssi() }}dBm</span>
+          </div>
+          <div class="status-item-nav" *ngIf="esp32MqttStatus() !== null" [class.active]="esp32MqttStatus()">
+            <span class="status-dot-nav" [class.online]="esp32MqttStatus()"></span>
+            <span>ESP32 MQTT</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <h3 class="nav-title">Acciones</h3>
+        <button class="nav-btn" (click)="reconnectMqtt()" *ngIf="!isMqttConnected()">
+          <span>🔄</span> Reconectar
+        </button>
+        <button class="nav-btn" (click)="showDiagnostics()">
+          <span>🔍</span> Diagnóstico
+        </button>
+      </div>
+
+      <div class="nav-section">
+        <div class="last-update-nav">
+          <span class="update-label">Última actualización</span>
+          <span class="update-time">{{ lastUpdate() }}</span>
+        </div>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="top-bar-left">
+        <h2 class="page-title">Panel de Control</h2>
+        <p class="page-subtitle">Monitoreo en tiempo real</p>
+      </div>
+      <div class="top-bar-right">
+        <div class="connection-indicator" [class]="mqttStatusClass()">
+          <div class="indicator-pulse"></div>
+          <span>{{ mqttStatusText() }}</span>
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Velocidad actual</h2>
-      <div class="value">
-        <span>{{ formatInteger(velocidad()) }}</span><span class="unit">%</span>
+    <!-- Metrics Grid -->
+    <div class="metrics-grid">
+      <!-- Distancia -->
+      <div class="metric-card metric-distance">
+        <div class="metric-header">
+          <div class="metric-icon">📏</div>
+          <div class="metric-label">Distancia</div>
+        </div>
+        <div class="metric-value-wrapper">
+          <span class="metric-value">{{ formatValue(distancia()) }}</span>
+          <span class="metric-unit">cm</span>
+        </div>
+        <div class="metric-visual">
+          <div class="visual-bar">
+            <div class="visual-fill distance-fill" [style.width.%]="getDistanciaPercent()"></div>
+          </div>
+        </div>
       </div>
-      <div class="row">
-        <span>{{ velocidadLabel() }}</span>
+
+      <!-- Objetos -->
+      <div class="metric-card metric-objects">
+        <div class="metric-header">
+          <div class="metric-icon">🎯</div>
+          <div class="metric-label">Objetos Detectados</div>
+        </div>
+        <div class="metric-value-wrapper">
+          <span class="metric-value">{{ formatInteger(objetos()) }}</span>
+        </div>
+        <div class="metric-badge" *ngIf="objetos() !== null && objetos()! > 0">
+          <span>{{ objetos() }} detectado{{ objetos()! > 1 ? 's' : '' }}</span>
+        </div>
+      </div>
+
+      <!-- Velocidad -->
+      <div class="metric-card metric-speed">
+        <div class="metric-header">
+          <div class="metric-icon">⚡</div>
+          <div class="metric-label">Velocidad</div>
+        </div>
+        <div class="metric-value-wrapper">
+          <span class="metric-value">{{ formatInteger(velocidad()) }}</span>
+          <span class="metric-unit">%</span>
+        </div>
+        <div class="metric-visual">
+          <div class="visual-bar">
+            <div class="visual-fill speed-fill" [style.width.%]="getVelocidadPercent()"></div>
+          </div>
+        </div>
+        <div class="speed-mode" [class.fast-mode]="velocidad() && velocidad()! >= 80" [class.slow-mode]="velocidad() && velocidad()! < 80">
+          {{ velocidadLabel() }}
+        </div>
       </div>
     </div>
-  </div>
 
-  <h2 style="font-size:0.9rem; color:#9ca3af;">Último JSON recibido</h2>
-  <div class="json-view">{{ lastJsonMessage() }}</div>
+    <!-- Bottom Section -->
+    <div class="bottom-section">
+      <!-- Config Panel -->
+      <div class="panel-card config-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">
+            <span class="panel-icon">⚙️</span>
+            Configuración MQTT
+          </h3>
+        </div>
+        <div class="panel-body">
+          <div class="config-list">
+            <div class="config-row">
+              <span class="config-key">Broker</span>
+              <code class="config-val">{{ config().host }}</code>
+            </div>
+            <div class="config-row">
+              <span class="config-key">Puerto</span>
+              <code class="config-val">{{ config().port }}</code>
+            </div>
+            <div class="config-row">
+              <span class="config-key">Topic</span>
+              <code class="config-val">{{ config().topic }}</code>
+            </div>
+            <div class="config-row">
+              <span class="config-key">Client ID</span>
+              <code class="config-val">{{ config().clientId }}</code>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  <div class="config">
-    <div class="config-item">
-      <span>Broker</span>
-      <code>{{ config().host }}</code>
+      <!-- JSON Panel -->
+      <div class="panel-card json-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">
+            <span class="panel-icon">📄</span>
+            Datos JSON
+          </h3>
+          <button class="copy-button" (click)="copyJson()">
+            <span>📋</span> Copiar
+          </button>
+        </div>
+        <div class="panel-body">
+          <pre class="json-display">{{ lastJsonMessage() }}</pre>
+        </div>
+      </div>
     </div>
-    <div class="config-item">
-      <span>Puerto WebSocket</span>
-      <code>{{ config().port }}</code>
-    </div>
-    <div class="config-item">
-      <span>Topic</span>
-      <code>{{ config().topic }}</code>
-    </div>
-    <div class="config-item">
-      <span>Client ID</span>
-      <code>{{ config().clientId }}</code>
-    </div>
-  </div>
 
-  <div class="footer">
-    <span>Estado MQTT Dashboard: <span [class]="mqttStatusClass()">{{ mqttStatusText() }}</span></span>
-    <span *ngIf="esp32MqttStatus() !== null">
-      | ESP32 MQTT: <span [class]="esp32MqttStatus() ? 'connected' : 'disconnected'">
-        {{ esp32MqttStatus() ? '✅ Conectado' : '❌ Desconectado' }}
-      </span>
-    </span>
-    <span *ngIf="connectionStatus().attempts > 0 && !isMqttConnected()">
-      | Intentos: {{ connectionStatus().attempts }}/{{ connectionStatus().maxAttempts }}
-    </span>
-    <span *ngIf="isMqttConnected() && esp32MqttStatus()"> | ✅ Conexión completa estable</span>
-  </div>
+    <!-- Footer Status Bar -->
+    <div class="status-bar-bottom">
+      <div class="status-items">
+        <div class="status-chip" [class]="mqttStatusClass()">
+          <span class="chip-dot"></span>
+          <span>Dashboard: {{ mqttStatusText() }}</span>
+        </div>
+        <div class="status-chip" *ngIf="esp32MqttStatus() !== null" [class.active]="esp32MqttStatus()" [class.inactive]="!esp32MqttStatus()">
+          <span class="chip-dot"></span>
+          <span>ESP32: {{ esp32MqttStatus() ? 'Conectado' : 'Desconectado' }}</span>
+        </div>
+        <div class="status-chip success" *ngIf="isMqttConnected() && esp32MqttStatus()">
+          <span class="chip-dot"></span>
+          <span>Sistema Operativo</span>
+        </div>
+        <div class="status-chip info" *ngIf="connectionStatus().attempts > 0 && !isMqttConnected()">
+          <span>Intentos: {{ connectionStatus().attempts }}/{{ connectionStatus().maxAttempts }}</span>
+        </div>
+      </div>
+    </div>
+  </main>
 </div>
-
